@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SoftCam test pattern</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #14233a;
+        color: #fff;
+        font-family:
+          Segoe UI,
+          sans-serif;
+      }
+      canvas {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <script>
+      const c = document.querySelector("canvas"),
+        ctx = c.getContext("2d");
+      let audio,
+        epoch = performance.now(),
+        beeps = false,
+        audioBase = 0,
+        nextTone = 0;
+      window.enableAudio = () => {
+        audio = new AudioContext();
+        audio.resume();
+        beeps = true;
+        audioBase = audio.currentTime + 0.25;
+        nextTone = audioBase;
+        schedule();
+      };
+      function schedule() {
+        if (!beeps) return;
+        const osc = audio.createOscillator(),
+          g = audio.createGain();
+        g.gain.value = 0.08;
+        osc.frequency.value = window.testFrequency || 1000;
+        osc.connect(g).connect(audio.destination);
+        osc.start(nextTone);
+        osc.stop(nextTone + 0.12);
+        nextTone += 2;
+        setTimeout(schedule, 1800);
+      }
+      function draw() {
+        c.width = innerWidth * devicePixelRatio;
+        c.height = innerHeight * devicePixelRatio;
+        const t = audio
+            ? Math.max(0, audio.getOutputTimestamp().contextTime - audioBase)
+            : (performance.now() - epoch) / 1000,
+          w = c.width,
+          h = c.height;
+        ctx.fillStyle = "#14233a";
+        ctx.fillRect(0, 0, w, h);
+        const flash = t % 2 < 0.12;
+        ctx.fillStyle = flash ? "#ffffff" : "#1877ef";
+        ctx.fillRect(0, 0, w * 0.25, h * 0.25);
+        ctx.fillStyle = "#fff";
+        ctx.font = `600 ${h / 13}px Segoe UI`;
+        ctx.fillText("SoftCam", w * 0.12, h * 0.48);
+        ctx.font = `${h / 28}px Segoe UI`;
+        ctx.fillStyle = "#9db5d5";
+        ctx.fillText("CAPTURE ENGINE / VERIFICATION", w * 0.12, h * 0.56);
+        ctx.fillText(t.toFixed(2) + " s", w * 0.12, h * 0.65);
+        ctx.fillStyle = "#51c1ac";
+        ctx.beginPath();
+        ctx.arc(
+          w * 0.7 + Math.sin(t) * w * 0.12,
+          h * 0.52,
+          h * 0.06,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+        requestAnimationFrame(draw);
+      }
+      draw();
+    </script>
+  </body>
+</html>

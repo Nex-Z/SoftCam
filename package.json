@@ -1,0 +1,31 @@
+{
+  "name": "softcam",
+  "version": "0.1.4",
+  "private": true,
+  "description": "A portable screen recorder, screenshot editor and video compressor",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build:ui": "tsc --noEmit && vite build",
+    "build:engine": "cargo build --release --manifest-path engine/Cargo.toml",
+    "build": "npm run build:ui && npm run build:engine",
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs && cargo test --manifest-path engine/Cargo.toml",
+    "package": "npm run build && node scripts/package.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "electron": "^44.3.0",
+    "playwright": "^1.55.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}
