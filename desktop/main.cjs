@@ -25,6 +25,7 @@ const { physicalCrop, within } = require("./policy.cjs");
 const recordingBorder = require("./recording-border.cjs").recordingBorder({
   BrowserWindow,
   screen,
+  windowBounds: (id) => engine.call("windowBounds", { id }),
 });
 protocol.registerSchemesAsPrivileged([
   {

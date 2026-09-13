@@ -33,6 +33,7 @@ fn handle(method: &str, p: Value, state: &Arc<Mutex<State>>) -> Result<Value> {
             json!({"platform":"windows","encoders":media::encoders(),"microphones":audio::devices()?}),
         ),
         "sources" => capture::sources(),
+        "windowBounds" => capture::window_bounds(p["id"].as_i64().context("缺少窗口 ID")? as isize),
         "probe" => media::probe(p["path"].as_str().context("缺少文件路径")?),
         "pause" | "resume" => {
             let s = state.lock().unwrap();

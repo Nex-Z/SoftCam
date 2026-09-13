@@ -166,3 +166,37 @@ pub fn sources() -> Result<serde_json::Value> {
     let windows=Window::enumerate()?.into_iter().filter(|w|w.is_valid()).filter_map(|w|{let title=w.title().ok()?;if title.trim().is_empty()||title=="SoftCam"||title.starts_with("SoftCam ·"){return None}let mut rect=windows::Win32::Foundation::RECT::default();unsafe {let _=windows::Win32::UI::WindowsAndMessaging::GetWindowRect(windows::Win32::Foundation::HWND(w.as_raw_hwnd()), &mut rect);} Some(serde_json::json!({"x":rect.left,"y":rect.top,"width":rect.right-rect.left,"height":rect.bottom-rect.top,"id":w.as_raw_hwnd() as isize,"kind":"window","title":title,"pid":w.process_id().unwrap_or(0),"process":w.process_name().unwrap_or_default()}))}).collect::<Vec<_>>();
     Ok(serde_json::json!({"monitors":monitors,"windows":windows}))
 }
+
+pub fn window_bounds(id: isize) -> Result<serde_json::Value> {
+    use windows::Win32::{
+        Foundation::{HWND, RECT},
+        UI::WindowsAndMessaging::{GetWindowRect, IsIconic, IsWindow, IsWindowVisible},
+    };
+    let hwnd = HWND(id as *mut std::ffi::c_void);
+    unsafe {
+        if !IsWindow(Some(hwnd)).as_bool()
+            || !IsWindowVisible(hwnd).as_bool()
+            || IsIconic(hwnd).as_bool()
+        {
+            return Ok(serde_json::Value::Null);
+        }
+        let mut rect = RECT::default();
+        GetWindowRect(hwnd, &mut rect)?;
+        // WGC uses the visible DWM frame, not the invisible resize margins
+        // returned by GetWindowRect on modern Windows.
+        let mut visible = RECT::default();
+        if windows::Win32::Graphics::Dwm::DwmGetWindowAttribute(
+            hwnd,
+            windows::Win32::Graphics::Dwm::DWMWA_EXTENDED_FRAME_BOUNDS,
+            &mut visible as *mut RECT as *mut std::ffi::c_void,
+            std::mem::size_of::<RECT>() as u32,
+        )
+        .is_ok()
+        {
+            rect = visible;
+        }
+        Ok(
+            serde_json::json!({"x":rect.left,"y":rect.top,"width":rect.right-rect.left,"height":rect.bottom-rect.top}),
+        )
+    }
+}
