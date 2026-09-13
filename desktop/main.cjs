@@ -22,6 +22,10 @@ const { pathToFileURL } = require("node:url");
 const { randomUUID } = require("node:crypto");
 const { Engine } = require("./engine.cjs");
 const { physicalCrop, within } = require("./policy.cjs");
+const recordingBorder = require("./recording-border.cjs").recordingBorder({
+  BrowserWindow,
+  screen,
+});
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "softcam",
@@ -256,6 +260,7 @@ function selectedSource(s) {
 async function stopRecording() {
   if (!["recording", "paused"].includes(recordState)) return;
   recordState = "saving";
+  recordingBorder.close();
   event("recording", { state: "saving" });
   float?.hide();
   return engine.call("stop");
@@ -466,18 +471,24 @@ async function dispatch(method, p = {}) {
         throw new Error("已有任务正在进行");
       recordState = "starting";
       try {
+        const source = selectedSource(p.source);
+        const known = cachedSources.find(
+          (x) => x.kind === source.kind && x.id === source.id,
+        );
+        await recordingBorder.show({ ...known, ...source });
         await createFloat(p.displayId);
         main.hide();
         const result = await engine.call("start", {
           ...settings,
           ...p,
-          source: selectedSource(p.source),
+          source,
           output: filename("mp4"),
         });
 
         return result;
       } catch (e) {
         recordState = "idle";
+        recordingBorder.close();
         float?.hide();
         showMain();
         event("recording", { state: "error", message: String(e) });
@@ -667,12 +678,14 @@ else {
         fsp.appendFile(path.join(dataDir, "engine.log"), s).catch(() => {}),
       );
       engine.on("event", (m) => {
+        if (m.event === "engineError") recordingBorder.close();
         if (m.event === "recording") {
           recordState = m.data.state;
           if (m.data.path) {
             m.data.url = grant(m.data.path);
           }
           if (["completed", "error"].includes(recordState)) {
+            recordingBorder.close();
             float?.hide();
             showMain();
           }
@@ -739,6 +752,7 @@ else {
     if (quitting) return;
     e.preventDefault();
     quitting = true;
+    recordingBorder.close();
     capture.close();
     (async () => {
       try {
